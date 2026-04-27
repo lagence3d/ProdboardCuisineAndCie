@@ -28,6 +28,29 @@
 
     .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
 
+    .tabs-nav {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid #e5e7eb;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      padding: 10px 22px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #6b7280;
+      cursor: pointer;
+      transition: color .15s, border-color .15s;
+    }
+    .tab-btn:hover { color: #1a1a1a; }
+    .tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; font-weight: 600; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
     .card {
       background: #fff;
       border: 1px solid #e0e0e0;
@@ -334,22 +357,31 @@
   <!-- Auth -->
   <div class="card">
     <h2>Authentification</h2>
-    <div class="form-grid cols-2">
-      <div>
+    <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div style="flex:0 0 auto;width:calc(25% - 8px);min-width:100px">
         <label for="company">Entreprise</label>
         <input type="text" id="company" placeholder="votre-slug-entreprise" value="cuisineandcie" autocomplete="off">
       </div>
-      <div>
+      <div style="flex:0 0 auto;width:calc(33% - 8px);min-width:140px">
         <label for="privateKey">Clé privée</label>
-        <input type="text" id="privateKey" placeholder="Token" autocomplete="off">
+        <input type="text" id="privateKey" placeholder="Token" value="Wcrl0XYx1obQkcBWMXUETOzCW15uGgej" autocomplete="off">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+        <button class="btn btn-primary" id="btnConnect" onclick="connect()">Se connecter</button>
+        <button class="btn btn-secondary" id="btnDisconnect" onclick="disconnect()" style="display:none">Se déconnecter</button>
+        <div id="authMsg"></div>
       </div>
     </div>
-    <div class="actions">
-      <button class="btn btn-primary" id="btnConnect" onclick="connect()">Se connecter</button>
-      <button class="btn btn-secondary" id="btnDisconnect" onclick="disconnect()" style="display:none">Se déconnecter</button>
-      <div id="authMsg"></div>
-    </div>
   </div>
+
+  <!-- Tabs -->
+  <div class="tabs-nav">
+    <button class="tab-btn active" onclick="switchTab('projets')">Projets</button>
+    <button class="tab-btn" onclick="switchTab('config')">Configuration</button>
+  </div>
+
+  <!-- Tab: Projets -->
+  <div class="tab-pane active" id="tab-projets">
 
   <!-- Filters -->
   <div class="card">
@@ -437,6 +469,16 @@
       </table>
     </div>
   </div>
+
+  </div><!-- /tab-projets -->
+
+  <!-- Tab: Configuration -->
+  <div class="tab-pane" id="tab-config">
+    <div class="card">
+      <h2>Configuration</h2>
+      <p style="font-size:13px;color:#9ca3af;">Aucun paramètre de configuration pour l'instant.</p>
+    </div>
+  </div><!-- /tab-config -->
 
 </div>
 
@@ -904,6 +946,15 @@
 
     const date = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `prodboard_projets_${date}.xlsx`);
+  }
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.querySelector(`.tab-btn[onclick="switchTab('${name}')"]`).classList.add('active');
   }
 
   // Allow Enter key in auth fields to trigger connect
