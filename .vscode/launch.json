@@ -1,0 +1,21 @@
+{
+
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch Chrome against localhost",
+            "url": "http://localhost/ProdboardCuisineAndCie/index.php",
+            "webRoot": "${workspaceFolder}",
+            "sourceMapPathOverrides": {
+                "/CabMakerNEWINTERFACE/public_html/*": "${workspaceFolder}/*"
+            },
+            "userDataDir": true,
+            "runtimeArgs": [
+                "--disable-cache",
+                "--disable-application-cache"
+            ]
+        }
+    ]
+}
