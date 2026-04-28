@@ -360,7 +360,7 @@
     <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
       <div style="flex:0 0 auto;width:calc(25% - 8px);min-width:100px">
         <label for="company">Entreprise</label>
-        <input type="text" id="company" placeholder="votre-slug-entreprise" value="cuisineandcie" autocomplete="off">
+        <input type="text" readonly id="company" placeholder="votre-slug-entreprise" value="cuisineandcie" autocomplete="off">
       </div>
       <div style="flex:0 0 auto;width:calc(33% - 8px);min-width:140px">
         <label for="privateKey">Clé privée</label>
@@ -854,7 +854,7 @@
               <td>${esc(l.name ?? '')}<br><span style="font-size:11px;color:#9ca3af">${esc(l.contextName ?? '')}</span></td>
               <td class="muted">${esc(l.categoryName ?? l.categoryCode ?? '')}</td>
               <td class="muted">${esc(l.sku ?? '')}</td>
-              <td style="text-align:right">${l.quantity ?? ''} ${esc(l.unitTypeCode ?? '')}</td>
+              <td style="text-align:right">${l.quantity ?? ''}</td>
               <td style="text-align:right">${fmtNum(l.unitPrice)}</td>
               <td style="text-align:right">${fmtNum(l.amount)}</td>
               <td style="text-align:right">${l.discountRate != null ? l.discountRate + ' %' : '—'}</td>
