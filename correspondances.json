@@ -1,0 +1,10 @@
+[
+    {
+        "refCC": "TEST",
+        "refFournisseur": "TEST_FOURNISSEUR"
+    },
+    {
+        "refCC": "TEST4",
+        "refFournisseur": "TEST4_FOURNISSEUR"
+    }
+]

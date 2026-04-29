@@ -1,3 +1,40 @@
+<?php
+define('CORR_FILE', __DIR__ . '/correspondances.csv');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action'])) {
+    header('Content-Type: application/json');
+    if ($_GET['action'] === 'save') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($data)) { http_response_code(400); echo json_encode(['error' => 'Invalid data']); exit; }
+        $fp = fopen(CORR_FILE, 'w');
+        fprintf($fp, "\xEF\xBB\xBF"); // BOM UTF-8
+        foreach ($data as $row) {
+            $cc = str_replace('"', '', $row['refCC'] ?? '');
+            $fo = str_replace('"', '', $row['refFournisseur'] ?? '');
+            fwrite($fp, $cc . ';' . $fo . "\n");
+        }
+        fclose($fp);
+        echo json_encode(['ok' => true]);
+    }
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'load') {
+    header('Content-Type: application/json');
+    if (!file_exists(CORR_FILE)) { echo '[]'; exit; }
+    $rows = [];
+    $fp = fopen(CORR_FILE, 'r');
+    // skip BOM if present
+    $bom = fread($fp, 3);
+    if ($bom !== "\xEF\xBB\xBF") rewind($fp);
+    while (($line = fgetcsv($fp, 0, ';')) !== false) {
+        if (count($line) >= 2) $rows[] = ['refCC' => trim($line[0], '"'), 'refFournisseur' => trim($line[1], '"')];
+    }
+    fclose($fp);
+    echo json_encode($rows);
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -274,6 +311,28 @@
       overflow: hidden;
     }
     .invoice-table-wrap { overflow-x: auto; }
+
+    .corr-input {
+      width: 100%;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 13px;
+      background: transparent;
+      outline: none;
+    }
+    .corr-input:focus { border-color: #4f46e5; background: #fff; }
+    .corr-del {
+      background: none;
+      border: none;
+      color: #d1d5db;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .corr-del:hover { color: #ef4444; background: #fee2e2; }
     .invoice-block-header {
       background: #f9fafb;
       padding: 8px 12px;
@@ -475,8 +534,26 @@
   <!-- Tab: Configuration -->
   <div class="tab-pane" id="tab-config">
     <div class="card">
-      <h2>Configuration</h2>
-      <p style="font-size:13px;color:#9ca3af;">Aucun paramètre de configuration pour l'instant.</p>
+      <div class="results-meta" style="margin-bottom:16px">
+        <h2 style="margin:0">Correspondance des références</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="corrSaveStatus" style="font-size:12px;color:#9ca3af"></span>
+          <button class="btn btn-secondary" onclick="corrAddRow()">+ Ajouter</button>
+          <button class="btn btn-primary" onclick="corrSave()">Enregistrer</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="corrTable">
+          <thead>
+            <tr>
+              <th>Références C&amp;C</th>
+              <th>Références fournisseurs</th>
+              <th style="width:48px"></th>
+            </tr>
+          </thead>
+          <tbody id="corrBody"></tbody>
+        </table>
+      </div>
     </div>
   </div><!-- /tab-config -->
 
@@ -490,10 +567,41 @@
       <h3 id="panelTitle">—</h3>
       <div class="panel-sub" id="panelSub"></div>
     </div>
+    <button class="btn btn-secondary" id="btnExportFournisseur" onclick="openExportModal()" style="font-size:12px;padding:6px 12px;display:none">Export fournisseur</button>
     <button class="panel-close" onclick="closePanel()">✕</button>
   </div>
   <div class="panel-body" id="panelBody">
     <div class="panel-loading"><div class="spinner"></div> Chargement…</div>
+  </div>
+</div>
+
+<!-- Export fournisseur modal -->
+<div class="panel-overlay" id="exportOverlay" onclick="closeExportModal()" style="z-index:200"></div>
+<div id="exportModal" style="
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(.95);
+  width:min(960px,95vw);max-height:80vh;
+  background:#fff;border-radius:10px;box-shadow:0 8px 40px rgba(0,0,0,.2);
+  z-index:201;display:flex;flex-direction:column;
+  opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e5e7eb;flex-shrink:0">
+    <div>
+      <div style="font-size:15px;font-weight:600">Export fournisseur</div>
+      <div id="exportModalSub" style="font-size:12px;color:#9ca3af;margin-top:2px"></div>
+    </div>
+    <button class="panel-close" onclick="closeExportModal()">✕</button>
+  </div>
+  <div style="overflow-y:auto;overflow-x:auto;flex:1;padding:20px">
+    <table style="min-width:500px">
+      <thead>
+        <tr>
+          <th>Désignation</th>
+          <th>Réf. C&amp;C (SKU)</th>
+          <th>Réf. fournisseur</th>
+          <th style="text-align:right">Qté</th>
+        </tr>
+      </thead>
+      <tbody id="exportBody"></tbody>
+    </table>
   </div>
 </div>
 
@@ -763,14 +871,21 @@
   }
 
   function closePanel() {
+    closeExportModal();
     document.getElementById('panelOverlay').classList.remove('open');
     document.getElementById('sidePanel').classList.remove('open');
+    document.getElementById('btnExportFournisseur').style.display = 'none';
+    currentPanelProject = null;
     if (activeRow) { activeRow.classList.remove('active'); activeRow = null; }
   }
 
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeExportModal(); closePanel(); } });
+
+  let currentPanelProject = null;
 
   function renderPanel(p) {
+    currentPanelProject = p;
+    document.getElementById('btnExportFournisseur').style.display = '';
     let html = '';
 
     // Infos générales
@@ -947,6 +1062,109 @@
     const date = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `prodboard_projets_${date}.xlsx`);
   }
+
+  // ── Export fournisseur ────────────────────────────────────────────────────
+
+  function openExportModal() {
+    if (!currentPanelProject) return;
+    const p = currentPanelProject;
+
+    // Collect all lines from all invoices
+    const lines = (p.invoices ?? []).flatMap(inv => inv.lines ?? []);
+
+    // Build lookup map from corrData: refCC (lowercase) → refFournisseur
+    const lookup = {};
+    corrData.forEach(r => { if (r.refCC) lookup[r.refCC.trim().toLowerCase()] = r.refFournisseur ?? ''; });
+
+    const tbody = document.getElementById('exportBody');
+    tbody.innerHTML = '';
+    lines.forEach(l => {
+      const sku = (l.sku ?? '').trim();
+      const refF = sku && lookup[sku.toLowerCase()] != null
+        ? (lookup[sku.toLowerCase()] || '<span style="color:#ef4444;font-weight:600">NON TROUVÉ</span>')
+        : '<span style="color:#ef4444;font-weight:600">NON TROUVÉ</span>';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${esc(l.name ?? '')}</td>
+        <td>${esc(sku) || '<span class="muted">—</span>'}</td>
+        <td>${refF}</td>
+        <td style="text-align:right">${l.quantity ?? '—'}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('exportModalSub').textContent = p.name || '';
+    const overlay = document.getElementById('exportOverlay');
+    const modal   = document.getElementById('exportModal');
+    overlay.classList.add('open');
+    modal.style.opacity = '1';
+    modal.style.pointerEvents = 'auto';
+    modal.style.transform = 'translate(-50%,-50%) scale(1)';
+  }
+
+  function closeExportModal() {
+    const overlay = document.getElementById('exportOverlay');
+    const modal   = document.getElementById('exportModal');
+    overlay.classList.remove('open');
+    modal.style.opacity = '0';
+    modal.style.pointerEvents = 'none';
+    modal.style.transform = 'translate(-50%,-50%) scale(.95)';
+  }
+
+  // ── Correspondances ───────────────────────────────────────────────────────
+
+  let corrData = [];
+
+  async function corrLoad() {
+    try {
+      const res = await fetch('?action=load');
+      corrData = await res.json();
+    } catch { corrData = []; }
+    corrRender();
+  }
+
+  function corrRender() {
+    const tbody = document.getElementById('corrBody');
+    tbody.innerHTML = '';
+    corrData.forEach((row, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input class="corr-input" value="${esc(row.refCC ?? '')}" oninput="corrData[${i}].refCC=this.value" placeholder="Réf. C&C"></td>
+        <td><input class="corr-input" value="${esc(row.refFournisseur ?? '')}" oninput="corrData[${i}].refFournisseur=this.value" placeholder="Réf. fournisseur"></td>
+        <td><button class="corr-del" onclick="corrDeleteRow(${i})" title="Supprimer">✕</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function corrAddRow() {
+    corrData.push({ refCC: '', refFournisseur: '' });
+    corrRender();
+    const inputs = document.querySelectorAll('#corrBody tr:last-child .corr-input');
+    if (inputs.length) inputs[0].focus();
+  }
+
+  function corrDeleteRow(i) {
+    corrData.splice(i, 1);
+    corrRender();
+  }
+
+  async function corrSave() {
+    const status = document.getElementById('corrSaveStatus');
+    status.textContent = 'Enregistrement…';
+    try {
+      const res = await fetch('?action=save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(corrData)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      status.textContent = 'Enregistré ✓';
+      setTimeout(() => { status.textContent = ''; }, 3000);
+    } catch (e) {
+      status.textContent = `Erreur : ${e.message}`;
+    }
+  }
+
+  corrLoad();
 
   // ── Tabs ──────────────────────────────────────────────────────────────────
 
