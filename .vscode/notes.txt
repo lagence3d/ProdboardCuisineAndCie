@@ -1,0 +1,19 @@
+Cas particulier de correspondance 
+
+Pour les références commencant par 
+PDTSM, il faut supprimer les deux derniers chiffres de fin qui contiennent un underscore avant de faire la comparaison
+example : PDTSM_BETONGRISNATUREL_890_740 il faut retenir pour la comparaison PDTSM_BETONGRISNATUREL
+
+puis il faut  traiter les infos supplementaires LOLA de la référence PDTSM et ajouter les chiffres qui suivent LOLA, a la reference finale
+example : PDTSM_BETONGRISNATUREL_890_740 |LOLA|890_740 devient BLATY38MM_BETONJASNY_890_740
+
+
+
+
+Fais pareil pour PAN_SM_V(idem PDTSM_) et |HAPR| (idel LOLA) 
+
+
+    LOLA : pour PDTSM_
+    HALA : pour JAM_
+    PRHA : pour PAN_SM_
+    HAPR : pour PAN_SM_V

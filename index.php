@@ -567,7 +567,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
       <h3 id="panelTitle">—</h3>
       <div class="panel-sub" id="panelSub"></div>
     </div>
-    <button class="btn btn-secondary" id="btnExportFournisseur" onclick="openExportModal()" style="font-size:12px;padding:6px 12px;display:none">Export fournisseur</button>
+    <button class="btn btn-secondary" id="btnExportFournisseur" onclick="openExportModal()" style="font-size:12px;padding:6px 12px;display:none">->Corresondance fournisseur</button>
     <button class="panel-close" onclick="closePanel()">✕</button>
   </div>
   <div class="panel-body" id="panelBody">
@@ -588,7 +588,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
       <div style="font-size:15px;font-weight:600">Export fournisseur</div>
       <div id="exportModalSub" style="font-size:12px;color:#9ca3af;margin-top:2px"></div>
     </div>
-    <button class="panel-close" onclick="closeExportModal()">✕</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-secondary" onclick="exportFournisseurCSV()" style="font-size:12px;padding:6px 12px">⬇ Export CSV</button>
+      <button class="panel-close" onclick="closeExportModal()">✕</button>
+    </div>
   </div>
   <div style="overflow-y:auto;overflow-x:auto;flex:1;padding:20px">
     <table style="min-width:500px">
@@ -1080,9 +1083,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     tbody.innerHTML = '';
     lines.forEach(l => {
       const sku = (l.sku ?? '').trim();
-      const refF = sku && lookup[sku.toLowerCase()] != null
-        ? (lookup[sku.toLowerCase()] || '<span style="color:#ef4444;font-weight:600">NON TROUVÉ</span>')
-        : '<span style="color:#ef4444;font-weight:600">NON TROUVÉ</span>';
+
+      const contextName = (l.contextName ?? '').trim();
+      const lookupKey = sku.toLowerCase();
+      let lolaSuffix = '';
+
+      if (contextName.includes('|LOLA|')) {
+        lolaSuffix = contextName.substring(contextName.indexOf('|LOLA|') + 6);
+      } else if (contextName.includes('|HALA|')) {
+        lolaSuffix = contextName.substring(contextName.indexOf('|HALA|') + 6);
+      } else if (contextName.includes('|PRHA|')) {
+        lolaSuffix = contextName.substring(contextName.indexOf('|PRHA|') + 6);
+      } else if (contextName.includes('|HAPR|')) {
+        lolaSuffix = contextName.substring(contextName.indexOf('|HAPR|') + 6);
+      }
+
+      let refF;
+      if (sku && lookup[lookupKey] != null) {
+        let found = lookup[lookupKey];
+        if (found) {
+          refF = lolaSuffix ? found + '_' + lolaSuffix : found;
+        } else {
+          refF = '<span style="color:#ef4444;font-weight:600">NON TROUVÉ</span>';
+        }
+      } else {
+        refF = '<span style="color:#ef4444;font-weight:600">NON TROUVÉ</span>';
+      }
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${esc(l.name ?? '')}</td>
@@ -1173,6 +1199,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
     document.querySelector(`.tab-btn[onclick="switchTab('${name}')"]`).classList.add('active');
+  }
+
+  // ── Export fournisseur CSV ────────────────────────────────────────────────
+
+  function exportFournisseurCSV() {
+    if (!currentPanelProject) return;
+    const rows = [['Désignation', 'Réf. C&C (SKU)', 'Réf. fournisseur', 'Qté']];
+    document.querySelectorAll('#exportBody tr').forEach(tr => {
+      const cells = tr.querySelectorAll('td');
+      rows.push([
+        cells[0]?.innerText ?? '',
+        cells[1]?.innerText ?? '',
+        cells[2]?.innerText ?? '',
+        cells[3]?.innerText ?? '',
+      ]);
+    });
+    const csv = '﻿' + rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const name = (currentPanelProject.name || 'export').replace(/[^a-z0-9\-_]/gi, '_');
+    a.href = url;
+    a.download = `fournisseur_${name}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   // Allow Enter key in auth fields to trigger connect
