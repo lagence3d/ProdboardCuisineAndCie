@@ -534,12 +534,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
   <!-- Tab: Configuration -->
   <div class="tab-pane" id="tab-config">
     <div class="card">
-      <div class="results-meta" style="margin-bottom:16px">
+      <div class="results-meta" style="margin-bottom:12px">
         <h2 style="margin:0">Correspondance des références</h2>
         <div style="display:flex;gap:8px;align-items:center">
           <span id="corrSaveStatus" style="font-size:12px;color:#9ca3af"></span>
           <button class="btn btn-secondary" onclick="corrAddRow()">+ Ajouter</button>
           <button class="btn btn-primary" onclick="corrSave()">Enregistrer</button>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <input type="text" id="corrSearch" placeholder="Rechercher une référence C&C ou fournisseur…" oninput="corrRender()" style="max-width:400px;flex:1;min-width:200px">
+        <span id="corrSearchCount" style="font-size:12px;color:#9ca3af"></span>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn btn-secondary" onclick="document.getElementById('corrTable').scrollIntoView({behavior:'smooth',block:'start'})" title="Aller en haut">↑ Haut</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('corrBody').lastElementChild?.scrollIntoView({behavior:'smooth',block:'end'})" title="Aller en bas">↓ Bas</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -1149,9 +1157,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
   }
 
   function corrRender() {
+    const q = (document.getElementById('corrSearch')?.value ?? '').trim().toLowerCase();
     const tbody = document.getElementById('corrBody');
     tbody.innerHTML = '';
+    let shown = 0;
     corrData.forEach((row, i) => {
+      if (q) {
+        const cc = (row.refCC ?? '').toLowerCase();
+        const fo = (row.refFournisseur ?? '').toLowerCase();
+        if (!cc.includes(q) && !fo.includes(q)) return;
+      }
+      shown++;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><input class="corr-input" value="${esc(row.refCC ?? '')}" oninput="corrData[${i}].refCC=this.value" placeholder="Réf. C&C"></td>
@@ -1159,6 +1175,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         <td><button class="corr-del" onclick="corrDeleteRow(${i})" title="Supprimer">✕</button></td>`;
       tbody.appendChild(tr);
     });
+    const countEl = document.getElementById('corrSearchCount');
+    if (countEl) {
+      countEl.textContent = q ? `${shown} / ${corrData.length} résultat${shown !== 1 ? 's' : ''}` : `${corrData.length} ligne${corrData.length !== 1 ? 's' : ''}`;
+    }
   }
 
   function corrAddRow() {
