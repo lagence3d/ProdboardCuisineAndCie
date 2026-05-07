@@ -1073,8 +1073,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     if (!currentPanelProject) return;
     const p = currentPanelProject;
 
-    // Collect all lines from all invoices
-    const lines = (p.invoices ?? []).flatMap(inv => inv.lines ?? []);
+    // Collect lines from invoices, en ignorant les factures de type "buy"
+    const lines = (p.invoices ?? [])
+      .filter(inv => (inv.type ?? '').toString().toLowerCase() !== 'buy')
+      .flatMap(inv => inv.lines ?? []);
 
     // Build lookup map from corrData: refCC (lowercase) → refFournisseur
     const lookup = {};
