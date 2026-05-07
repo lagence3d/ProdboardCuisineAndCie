@@ -545,10 +545,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
       <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <input type="text" id="corrSearch" placeholder="Rechercher une référence C&C ou fournisseur…" oninput="corrRender()" style="max-width:400px;flex:1;min-width:200px">
         <span id="corrSearchCount" style="font-size:12px;color:#9ca3af"></span>
-        <div style="margin-left:auto;display:flex;gap:6px">
-          <button class="btn btn-secondary" onclick="document.getElementById('corrTable').scrollIntoView({behavior:'smooth',block:'start'})" title="Aller en haut">↑ Haut</button>
-          <button class="btn btn-secondary" onclick="document.getElementById('corrBody').lastElementChild?.scrollIntoView({behavior:'smooth',block:'end'})" title="Aller en bas">↓ Bas</button>
-        </div>
       </div>
       <div class="table-wrap">
         <table id="corrTable">
@@ -1250,7 +1246,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
   ['company','privateKey'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') connect(); });
   });
+  window.addEventListener('scroll', () => {
+    document.getElementById('btnScrollTop').style.display = window.scrollY > 300 ? 'block' : 'none';
+  });
 </script>
+
+<button id="btnScrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Retour en haut"
+  style="display:none;position:fixed;bottom:28px;right:28px;z-index:999;
+         width:44px;height:44px;border-radius:50%;border:none;
+         background:#4f46e5;color:#fff;font-size:20px;cursor:pointer;
+         box-shadow:0 4px 12px rgba(0,0,0,.25)">↑</button>
 
 </body>
 </html>
